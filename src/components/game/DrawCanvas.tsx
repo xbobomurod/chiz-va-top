@@ -204,6 +204,7 @@ export function DrawCanvas({
       /* already released */
     }
     broadcast(current, true);
+    pendingRef.current.push(current);
     const { id: _id, ...stroke } = current;
     onStrokeFinished(stroke);
     dirtyRef.current = true;
