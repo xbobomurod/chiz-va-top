@@ -122,29 +122,35 @@ function RoomPage() {
   const currentRound = room?.current_round;
   const turnIndex = room?.turn_index;
   useEffect(() => {
-    console.log('CHOICEEFFECT', String(!!token), String(isDrawer), String(phase));
     if (!token || !isDrawer || (phase !== "choosing" && phase !== "drawing")) {
       setChoices([]);
       setSecretWord(null);
       return;
     }
     let cancelled = false;
-    void (async () => {
+    let done = false;
+    const fetchSecret = async () => {
       try {
-        console.log('CHOICEFETCH start');
         const result = await choicesFn({ data: { token } });
-        console.log('CHOICEFETCH', JSON.stringify(result));
         if (cancelled) return;
         setChoices(result.choices);
         setSecretWord(result.word);
-      } catch (e) {
-        console.log('CHOICEERR', String(e));
+        if (result.choices.length > 0 || result.word) done = true;
+      } catch {
+        /* retried by the interval below */
       }
-    })();
+    };
+    void fetchSecret();
+    const id = setInterval(() => {
+      if (!done) void fetchSecret();
+    }, 1500);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, [token, isDrawer, phase, currentRound, turnIndex, choicesFn]);
+
+
 
 
   const secondsLeft = useMemo(() => {
