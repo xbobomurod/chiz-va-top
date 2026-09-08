@@ -334,6 +334,7 @@ function RoomPage() {
                           choices.map((word) => (
                             <button
                               key={word}
+                              data-choice="1"
                               onClick={async () => {
                                 try {
                                   await chooseFn({ data: { token, word } });
