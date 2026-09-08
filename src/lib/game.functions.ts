@@ -107,9 +107,15 @@ export const joinRoom = createServerFn({ method: "POST" })
         .from("rooms")
         .update({
           status: "lobby",
+          phase: "lobby",
           current_round: 0,
+          turn_index: 0,
+          turn_order: [],
           current_drawer_id: null,
           phase_ends_at: null,
+          reveal_word: null,
+          word_mask: null,
+          word_length: null,
         })
         .eq("id", room.id);
       await supabaseAdmin.from("players").update({ score: 0 }).eq("room_id", room.id);
