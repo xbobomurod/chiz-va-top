@@ -92,11 +92,18 @@ export function DrawCanvas({
   /* clear live previews when the turn changes */
   useEffect(() => {
     liveRef.current = {};
+    pendingRef.current = [];
+    savedCountRef.current = 0;
     currentRef.current = null;
     dirtyRef.current = true;
   }, [turnKey]);
 
+  /* drop a pending stroke only once its saved copy has arrived (or on clear/undo) */
   useEffect(() => {
+    const added = strokes.length - savedCountRef.current;
+    savedCountRef.current = strokes.length;
+    if (added > 0) pendingRef.current.splice(0, added);
+    else if (added < 0) pendingRef.current = [];
     dirtyRef.current = true;
   }, [strokes]);
 
