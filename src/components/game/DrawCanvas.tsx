@@ -34,19 +34,34 @@ export function DrawCanvas({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentRef = useRef<LiveStroke | null>(null);
   const lastSentRef = useRef(0);
-  const [live, setLive] = useState<Record<string, LiveStroke>>({});
+  const liveRef = useRef<Record<string, LiveStroke>>({});
+  const strokesRef = useRef<Stroke[]>(strokes);
+  const dimsRef = useRef({ w: 800, h: 600 });
+  const dirtyRef = useRef(true);
+  const rafRef = useRef<number | null>(null);
   const [dims, setDims] = useState({ w: 800, h: 600 });
 
-  /* size */
+  strokesRef.current = strokes;
+  dimsRef.current = dims;
+
+  /* size — keep the board fully visible on phones */
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(() => {
+    const measure = () => {
       const w = el.clientWidth;
-      setDims({ w, h: Math.round((w * 3) / 4) });
-    });
+      const maxH = Math.max(240, Math.round(window.innerHeight * 0.52));
+      setDims({ w, h: Math.min(Math.round((w * 3) / 4), maxH) });
+      dirtyRef.current = true;
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
-    return () => observer.disconnect();
+    window.addEventListener("orientationchange", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("orientationchange", measure);
+    };
   }, []);
 
   /* realtime broadcast */
@@ -55,15 +70,13 @@ export function DrawCanvas({
     channel
       .on("broadcast", { event: "stroke" }, ({ payload }) => {
         const data = payload as { stroke: LiveStroke; done?: boolean };
-        setLive((prev) => ({ ...prev, [data.stroke.id]: data.stroke }));
+        liveRef.current[data.stroke.id] = data.stroke;
+        dirtyRef.current = true;
         if (data.done) {
           setTimeout(() => {
-            setLive((prev) => {
-              const next = { ...prev };
-              delete next[data.stroke.id];
-              return next;
-            });
-          }, 700);
+            delete liveRef.current[data.stroke.id];
+            dirtyRef.current = true;
+          }, 900);
         }
       })
       .subscribe();
@@ -76,84 +89,131 @@ export function DrawCanvas({
 
   /* clear live previews when the turn changes */
   useEffect(() => {
-    setLive({});
+    liveRef.current = {};
     currentRef.current = null;
+    dirtyRef.current = true;
   }, [turnKey]);
 
-  /* render */
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ratio = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = dims.w * ratio;
-    canvas.height = dims.h * ratio;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, dims.w, dims.h);
-    for (const stroke of strokes) drawStroke(ctx, stroke, dims.w, dims.h);
-    for (const stroke of Object.values(live)) drawStroke(ctx, stroke, dims.w, dims.h);
-    if (currentRef.current) drawStroke(ctx, currentRef.current, dims.w, dims.h);
-  }, [strokes, live, dims]);
+    dirtyRef.current = true;
+  }, [strokes]);
 
-  const pointFrom = useCallback((e: React.PointerEvent): [number, number] => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    return [
-      Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-      Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-    ];
+  /* single rAF render loop — smooth on phones, no re-render churn */
+  useEffect(() => {
+    const loop = () => {
+      rafRef.current = requestAnimationFrame(loop);
+      if (!dirtyRef.current) return;
+      dirtyRef.current = false;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const { w, h } = dimsRef.current;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      if (canvas.width !== Math.round(w * ratio) || canvas.height !== Math.round(h * ratio)) {
+        canvas.width = Math.round(w * ratio);
+        canvas.height = Math.round(h * ratio);
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      for (const stroke of strokesRef.current) drawStroke(ctx, stroke, w, h);
+      for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);
+      if (currentRef.current) drawStroke(ctx, currentRef.current, w, h);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
+
+  const pointFrom = useCallback(
+    (e: { clientX: number; clientY: number }, el: HTMLElement): [number, number] => {
+      const rect = el.getBoundingClientRect();
+      return [
+        Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+        Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+      ];
+    },
+    [],
+  );
 
   const broadcast = useCallback((stroke: LiveStroke, done = false) => {
     void channelRef.current?.send({ type: "broadcast", event: "stroke", payload: { stroke, done } });
   }, []);
 
-  const redrawTick = useCallback(() => {
-    setLive((prev) => ({ ...prev }));
-  }, []);
-
   function onDown(e: React.PointerEvent) {
     if (!canDraw) return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    const el = e.currentTarget as HTMLElement;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* some browsers reject capture on synthetic pointers */
+    }
     currentRef.current = {
-      id: `${Math.random().toString(36).slice(2)}`,
+      id: Math.random().toString(36).slice(2),
       color,
       size,
       tool,
-      points: [pointFrom(e)],
+      points: [pointFrom(e, el)],
     };
-    redrawTick();
+    lastSentRef.current = 0;
+    dirtyRef.current = true;
   }
 
   function onMove(e: React.PointerEvent) {
     const current = currentRef.current;
     if (!canDraw || !current) return;
-    current.points.push(pointFrom(e));
-    if (current.points.length > 3000) current.points.shift();
-    const now = Date.now();
-    if (now - lastSentRef.current > 55) {
+    e.preventDefault();
+    const el = e.currentTarget as HTMLElement;
+    const native = e.nativeEvent as PointerEvent;
+    const coalesced =
+      typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [];
+    if (coalesced.length > 0) {
+      for (const point of coalesced) current.points.push(pointFrom(point, el));
+    } else {
+      current.points.push(pointFrom(e, el));
+    }
+    if (current.points.length > 4000) current.points.splice(0, current.points.length - 4000);
+    dirtyRef.current = true;
+    const now = performance.now();
+    if (now - lastSentRef.current > 33) {
       lastSentRef.current = now;
       broadcast(current);
     }
-    redrawTick();
   }
 
-  function onUp() {
+  function onUp(e: React.PointerEvent) {
     const current = currentRef.current;
     currentRef.current = null;
     if (!canDraw || !current) return;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
     broadcast(current, true);
     const { id: _id, ...stroke } = current;
     onStrokeFinished(stroke);
-    redrawTick();
+    dirtyRef.current = true;
   }
 
   return (
     <div ref={wrapRef} className="w-full">
       <canvas
         ref={canvasRef}
-        style={{ width: dims.w, height: dims.h, touchAction: "none" }}
-        className={`w-full rounded-xl bg-cream ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
+        style={{
+          width: "100%",
+          height: dims.h,
+          touchAction: "none",
+          overscrollBehavior: "contain",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          WebkitTouchCallout: "none",
+        }}
+        className={`w-full rounded-xl bg-cream select-none ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
