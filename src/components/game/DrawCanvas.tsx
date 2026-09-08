@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { drawStroke, type Stroke, type Tool } from "@/lib/drawing";
 
@@ -42,20 +42,28 @@ export function DrawCanvas({
   const dimsRef = useRef({ w: 800, h: 600 });
   const dirtyRef = useRef(true);
   const rafRef = useRef<number | null>(null);
+  const renderRef = useRef<() => void>(() => undefined);
   const [dims, setDims] = useState({ w: 800, h: 600 });
 
   strokesRef.current = strokes;
   dimsRef.current = dims;
 
   /* size — keep the board fully visible on phones */
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const measure = () => {
       const w = el.clientWidth;
-      const maxH = Math.max(240, Math.round(window.innerHeight * 0.52));
-      setDims({ w, h: Math.min(Math.round((w * 3) / 4), maxH) });
+      const mobile = window.matchMedia("(max-width: 1023px)").matches;
+      const maxH = mobile
+        ? Math.max(190, Math.round(window.innerHeight * 0.34))
+        : Math.max(300, Math.round(window.innerHeight * 0.62));
+      const next = { w, h: Math.min(Math.round((w * 3) / 4), maxH) };
+      setDims((previous) =>
+        previous.w === next.w && previous.h === next.h ? previous : next,
+      );
       dirtyRef.current = true;
+      renderRef.current();
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -80,6 +88,7 @@ export function DrawCanvas({
           liveRef.current[data.stroke.id] = data.stroke;
         }
         dirtyRef.current = true;
+        renderRef.current();
       })
       .subscribe();
     channelRef.current = channel;
@@ -96,6 +105,7 @@ export function DrawCanvas({
     savedCountRef.current = 0;
     currentRef.current = null;
     dirtyRef.current = true;
+    renderRef.current();
   }, [turnKey]);
 
   /* drop a pending stroke only once its saved copy has arrived (or on clear/undo) */
@@ -105,12 +115,20 @@ export function DrawCanvas({
     if (added > 0) pendingRef.current.splice(0, added);
     else if (added < 0) pendingRef.current = [];
     dirtyRef.current = true;
+    renderRef.current();
   }, [strokes]);
 
-  /* single rAF render loop — smooth on phones, no re-render churn */
   useEffect(() => {
-    const loop = () => {
-      rafRef.current = requestAnimationFrame(loop);
+    dirtyRef.current = true;
+    renderRef.current();
+  }, [dims]);
+
+  /* Draw the complete scene only when shared/saved state changes. During a
+   * pointer move we paint the newest segment immediately, avoiding a cleared
+   * white frame while a phone is busy processing touch events. */
+  useEffect(() => {
+    const render = () => {
+      rafRef.current = null;
       if (!dirtyRef.current) return;
       dirtyRef.current = false;
       const canvas = canvasRef.current;
@@ -130,7 +148,10 @@ export function DrawCanvas({
       for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);
       if (currentRef.current) drawStroke(ctx, currentRef.current, w, h);
     };
-    rafRef.current = requestAnimationFrame(loop);
+    renderRef.current = () => {
+      if (rafRef.current === null) rafRef.current = requestAnimationFrame(render);
+    };
+    renderRef.current();
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
@@ -170,6 +191,7 @@ export function DrawCanvas({
     };
     lastSentRef.current = 0;
     dirtyRef.current = true;
+    renderRef.current();
   }
 
   function onMove(e: React.PointerEvent) {
@@ -187,6 +209,7 @@ export function DrawCanvas({
     }
     if (current.points.length > 4000) current.points.splice(0, current.points.length - 4000);
     dirtyRef.current = true;
+    renderRef.current();
     const now = performance.now();
     if (now - lastSentRef.current > 33) {
       lastSentRef.current = now;
@@ -208,6 +231,7 @@ export function DrawCanvas({
     const { id: _id, ...stroke } = current;
     onStrokeFinished(stroke);
     dirtyRef.current = true;
+    renderRef.current();
   }
 
   return (
@@ -222,6 +246,7 @@ export function DrawCanvas({
           WebkitUserSelect: "none",
           userSelect: "none",
           WebkitTouchCallout: "none",
+          contain: "strict",
         }}
         className={`w-full rounded-xl bg-cream select-none ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
         onContextMenu={(e) => e.preventDefault()}

@@ -171,12 +171,10 @@ async function beginTurn(room: RoomRow) {
 }
 
 export async function startDrawing(room: RoomRow, word: string) {
-  await db()
-    .from("room_secrets")
-    .update({ word, turn_started_at: new Date().toISOString(), correct_count: 0 })
-    .eq("room_id", room.id);
-
-  await db()
+  if (!room.current_drawer_id) return false;
+  // Claim this exact choosing phase first. Several players pulse the room at
+  // once, so a late auto-choice must not overwrite the drawer's real choice.
+  const { data: claimed } = await db()
     .from("rooms")
     .update({
       phase: "drawing",
@@ -186,12 +184,27 @@ export async function startDrawing(room: RoomRow, word: string) {
       reveal_word: null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", room.id);
+    .eq("id", room.id)
+    .eq("phase", "choosing")
+    .eq("current_round", room.current_round)
+    .eq("turn_index", room.turn_index)
+    .eq("current_drawer_id", room.current_drawer_id)
+    .select("id")
+    .maybeSingle();
+
+  if (!claimed) return false;
+
+  await db()
+    .from("room_secrets")
+    .update({ word, turn_started_at: new Date().toISOString(), correct_count: 0 })
+    .eq("room_id", room.id);
 
   await say(room.id, "O‘yin boshlandi — so‘zni toping!");
+  return true;
 }
 
 export async function endTurn(room: RoomRow, reason: "time" | "all" | "skip") {
+  if (!room.current_drawer_id) return false;
   const { data: secret } = await db()
     .from("room_secrets")
     .select("word")
@@ -199,7 +212,9 @@ export async function endTurn(room: RoomRow, reason: "time" | "all" | "skip") {
     .maybeSingle();
   const word = (secret as { word: string | null } | null)?.word ?? null;
 
-  await db()
+  // Only one request may end this turn. Without this guard, simultaneous
+  // heartbeats can replay the transition with stale room data.
+  const { data: claimed } = await db()
     .from("rooms")
     .update({
       phase: "reveal",
@@ -208,7 +223,15 @@ export async function endTurn(room: RoomRow, reason: "time" | "all" | "skip") {
       phase_ends_at: inSeconds(REVEAL_SECONDS),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", room.id);
+    .eq("id", room.id)
+    .in("phase", ["choosing", "drawing"])
+    .eq("current_round", room.current_round)
+    .eq("turn_index", room.turn_index)
+    .eq("current_drawer_id", room.current_drawer_id)
+    .select("id")
+    .maybeSingle();
+
+  if (!claimed) return false;
 
   await db().from("room_secrets").update({ word: null, choices: [] }).eq("room_id", room.id);
 
@@ -216,6 +239,7 @@ export async function endTurn(room: RoomRow, reason: "time" | "all" | "skip") {
   if (reason === "all") await say(room.id, "Hamma topdi!");
   if (reason === "skip") await say(room.id, "Chizuvchi chiqib ketdi — navbat o‘tkazildi.");
   if (word) await say(room.id, `To‘g‘ri javob: ${word}`);
+  return true;
 }
 
 async function advanceTurn(room: RoomRow) {
@@ -246,10 +270,20 @@ async function advanceTurn(room: RoomRow) {
     return;
   }
 
-  await db()
+  // Move through a short internal waiting phase while the next turn is being
+  // prepared. The compare-and-swap prevents stale pulses from advancing the
+  // same reveal more than once.
+  const { data: claimed } = await db()
     .from("rooms")
-    .update({ turn_index: turnIndex, current_round: round, turn_order: order })
-    .eq("id", room.id);
+    .update({ phase: "waiting", turn_index: turnIndex, current_round: round, turn_order: order })
+    .eq("id", room.id)
+    .eq("phase", "reveal")
+    .eq("current_round", room.current_round)
+    .eq("turn_index", room.turn_index)
+    .select("id")
+    .maybeSingle();
+
+  if (!claimed) return;
 
   const fresh = await getRoom(room.id);
   if (fresh) await beginTurn(fresh);
@@ -263,7 +297,7 @@ export async function startGame(room: RoomRow) {
   await db().from("players").update({ score: 0, round_score: 0, has_guessed: false }).eq("room_id", room.id);
   await db()
     .from("rooms")
-    .update({ status: "playing", turn_order: order, turn_index: 0, current_round: 1 })
+    .update({ status: "playing", phase: "waiting", turn_order: order, turn_index: 0, current_round: 1 })
     .eq("id", room.id);
 
   const fresh = await getRoom(room.id);

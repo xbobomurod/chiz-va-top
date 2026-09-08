@@ -28,11 +28,11 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
   }
 
   return (
-    <div className="panel flex h-full min-h-0 flex-col p-4">
+    <div className="panel flex h-full min-h-0 flex-col p-3 lg:p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-cream/50">
         Topish suhbati
       </h3>
-      <div ref={listRef} className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
+      <div ref={listRef} className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 lg:mt-3">
         {messages.map((message) => {
           if (message.kind === "system" || message.kind === "close") {
             return (
@@ -62,7 +62,7 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
       </div>
       <form
         onSubmit={submit}
-        className="mt-3 flex items-center gap-2 rounded-xl bg-inkdeep/50 p-1.5 outline-1 outline-white/10"
+        className="mt-2 flex shrink-0 items-center gap-2 rounded-xl bg-inkdeep/50 p-1.5 outline-1 outline-white/10 lg:mt-3"
       >
         <input
           value={text}
