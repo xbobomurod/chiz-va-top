@@ -58,7 +58,7 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
             </div>
           );
         })}
-        <div ref={endRef} />
+        
       </div>
       <form
         onSubmit={submit}
