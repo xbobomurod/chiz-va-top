@@ -399,7 +399,7 @@ function RoomPage() {
         </div>
 
         <aside className="order-3 lg:col-span-3">
-          <div className="h-[420px] lg:h-full lg:min-h-[520px]">
+          <div className="h-[420px] lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
             <ChatPanel
               messages={messages}
               disabled={isDrawer}
