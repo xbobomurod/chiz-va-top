@@ -10,10 +10,13 @@ interface Props {
 
 export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
   const [text, setText] = useState("");
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
+  /* scroll only the message list, never the page */
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   function submit(e: React.FormEvent) {
