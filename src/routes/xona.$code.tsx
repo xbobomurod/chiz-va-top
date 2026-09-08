@@ -130,12 +130,14 @@ function RoomPage() {
     let cancelled = false;
     void (async () => {
       try {
+        console.log('CHOICEFETCH start');
         const result = await choicesFn({ data: { token } });
+        console.log('CHOICEFETCH', JSON.stringify(result));
         if (cancelled) return;
         setChoices(result.choices);
         setSecretWord(result.word);
-      } catch {
-        /* ignore */
+      } catch (e) {
+        console.log('CHOICEERR', String(e));
       }
     })();
     return () => {
