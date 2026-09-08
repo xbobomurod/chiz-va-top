@@ -117,12 +117,21 @@ export function useRoomState(code: string) {
             filter: `room_id=eq.${roomRow.id}`,
           },
           (payload) =>
-            setMessages((prev) => [...prev, payload.new as unknown as ChatMessage].slice(-80)),
+            setMessages((prev) => {
+              const row = payload.new as unknown as ChatMessage;
+              if (prev.some((m) => m.id === row.id)) return prev;
+              return [...prev, row].slice(-80);
+            }),
         )
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "strokes", filter: `room_id=eq.${roomRow.id}` },
-          (payload) => setStrokes((prev) => [...prev, payload.new as unknown as StrokeRow]),
+          (payload) =>
+            setStrokes((prev) => {
+              const row = payload.new as unknown as StrokeRow;
+              if (prev.some((s) => s.id === row.id)) return prev;
+              return [...prev, row];
+            }),
         )
         .on(
           "postgres_changes",

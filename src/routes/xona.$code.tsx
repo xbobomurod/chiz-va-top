@@ -118,27 +118,40 @@ function RoomPage() {
   const drawer = players.find((p) => p.id === room?.current_drawer_id);
 
   /* drawer-only secret data */
+  const phase = room?.phase;
+  const currentRound = room?.current_round;
+  const turnIndex = room?.turn_index;
   useEffect(() => {
-    if (!token || !room || !isDrawer) {
+    if (!token || !isDrawer || (phase !== "choosing" && phase !== "drawing")) {
       setChoices([]);
       setSecretWord(null);
       return;
     }
     let cancelled = false;
-    void (async () => {
+    let done = false;
+    const fetchSecret = async () => {
       try {
         const result = await choicesFn({ data: { token } });
         if (cancelled) return;
         setChoices(result.choices);
         setSecretWord(result.word);
+        if (result.choices.length > 0 || result.word) done = true;
       } catch {
-        /* ignore */
+        /* retried by the interval below */
       }
-    })();
+    };
+    void fetchSecret();
+    const id = setInterval(() => {
+      if (!done) void fetchSecret();
+    }, 1500);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
-  }, [token, isDrawer, room?.phase, room?.current_round, room?.turn_index, choicesFn, room]);
+  }, [token, isDrawer, phase, currentRound, turnIndex, choicesFn]);
+
+
+
 
   const secondsLeft = useMemo(() => {
     if (!room?.phase_ends_at) return 0;
@@ -334,6 +347,7 @@ function RoomPage() {
                           choices.map((word) => (
                             <button
                               key={word}
+                              data-choice="1"
                               onClick={async () => {
                                 try {
                                   await chooseFn({ data: { token, word } });
