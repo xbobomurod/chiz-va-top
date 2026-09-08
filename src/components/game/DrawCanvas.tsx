@@ -126,6 +126,7 @@ export function DrawCanvas({
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, w, h);
       for (const stroke of strokesRef.current) drawStroke(ctx, stroke, w, h);
+      for (const stroke of pendingRef.current) drawStroke(ctx, stroke, w, h);
       for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);
       if (currentRef.current) drawStroke(ctx, currentRef.current, w, h);
     };
