@@ -35,6 +35,9 @@ export function DrawCanvas({
   const currentRef = useRef<LiveStroke | null>(null);
   const lastSentRef = useRef(0);
   const liveRef = useRef<Record<string, LiveStroke>>({});
+  /** finished strokes kept on screen until the saved copy arrives */
+  const pendingRef = useRef<LiveStroke[]>([]);
+  const savedCountRef = useRef(strokes.length);
   const strokesRef = useRef<Stroke[]>(strokes);
   const dimsRef = useRef({ w: 800, h: 600 });
   const dirtyRef = useRef(true);
