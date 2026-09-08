@@ -35,6 +35,9 @@ export function DrawCanvas({
   const currentRef = useRef<LiveStroke | null>(null);
   const lastSentRef = useRef(0);
   const liveRef = useRef<Record<string, LiveStroke>>({});
+  /** finished strokes kept on screen until the saved copy arrives */
+  const pendingRef = useRef<LiveStroke[]>([]);
+  const savedCountRef = useRef(strokes.length);
   const strokesRef = useRef<Stroke[]>(strokes);
   const dimsRef = useRef({ w: 800, h: 600 });
   const dirtyRef = useRef(true);
@@ -70,14 +73,13 @@ export function DrawCanvas({
     channel
       .on("broadcast", { event: "stroke" }, ({ payload }) => {
         const data = payload as { stroke: LiveStroke; done?: boolean };
-        liveRef.current[data.stroke.id] = data.stroke;
-        dirtyRef.current = true;
         if (data.done) {
-          setTimeout(() => {
-            delete liveRef.current[data.stroke.id];
-            dirtyRef.current = true;
-          }, 900);
+          delete liveRef.current[data.stroke.id];
+          pendingRef.current.push(data.stroke);
+        } else {
+          liveRef.current[data.stroke.id] = data.stroke;
         }
+        dirtyRef.current = true;
       })
       .subscribe();
     channelRef.current = channel;
@@ -90,11 +92,18 @@ export function DrawCanvas({
   /* clear live previews when the turn changes */
   useEffect(() => {
     liveRef.current = {};
+    pendingRef.current = [];
+    savedCountRef.current = 0;
     currentRef.current = null;
     dirtyRef.current = true;
   }, [turnKey]);
 
+  /* drop a pending stroke only once its saved copy has arrived (or on clear/undo) */
   useEffect(() => {
+    const added = strokes.length - savedCountRef.current;
+    savedCountRef.current = strokes.length;
+    if (added > 0) pendingRef.current.splice(0, added);
+    else if (added < 0) pendingRef.current = [];
     dirtyRef.current = true;
   }, [strokes]);
 
@@ -117,6 +126,7 @@ export function DrawCanvas({
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, w, h);
       for (const stroke of strokesRef.current) drawStroke(ctx, stroke, w, h);
+      for (const stroke of pendingRef.current) drawStroke(ctx, stroke, w, h);
       for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);
       if (currentRef.current) drawStroke(ctx, currentRef.current, w, h);
     };
@@ -194,6 +204,7 @@ export function DrawCanvas({
       /* already released */
     }
     broadcast(current, true);
+    pendingRef.current.push(current);
     const { id: _id, ...stroke } = current;
     onStrokeFinished(stroke);
     dirtyRef.current = true;

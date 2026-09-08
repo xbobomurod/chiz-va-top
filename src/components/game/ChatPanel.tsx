@@ -10,10 +10,13 @@ interface Props {
 
 export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
   const [text, setText] = useState("");
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
+  /* scroll only the message list, never the page */
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   function submit(e: React.FormEvent) {
@@ -29,7 +32,7 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
       <h3 className="text-xs font-semibold uppercase tracking-wider text-cream/50">
         Topish suhbati
       </h3>
-      <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+      <div ref={listRef} className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
         {messages.map((message) => {
           if (message.kind === "system" || message.kind === "close") {
             return (
@@ -55,7 +58,7 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
             </div>
           );
         })}
-        <div ref={endRef} />
+        
       </div>
       <form
         onSubmit={submit}
