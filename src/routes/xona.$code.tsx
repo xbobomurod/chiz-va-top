@@ -118,8 +118,11 @@ function RoomPage() {
   const drawer = players.find((p) => p.id === room?.current_drawer_id);
 
   /* drawer-only secret data */
+  const phase = room?.phase;
+  const currentRound = room?.current_round;
+  const turnIndex = room?.turn_index;
   useEffect(() => {
-    if (!token || !room || !isDrawer) {
+    if (!token || !isDrawer || (phase !== "choosing" && phase !== "drawing")) {
       setChoices([]);
       setSecretWord(null);
       return;
@@ -138,7 +141,8 @@ function RoomPage() {
     return () => {
       cancelled = true;
     };
-  }, [token, isDrawer, room?.phase, room?.current_round, room?.turn_index, choicesFn, room]);
+  }, [token, isDrawer, phase, currentRound, turnIndex, choicesFn]);
+
 
   const secondsLeft = useMemo(() => {
     if (!room?.phase_ends_at) return 0;
