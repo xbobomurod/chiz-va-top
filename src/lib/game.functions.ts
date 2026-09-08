@@ -101,7 +101,25 @@ export const joinRoom = createServerFn({ method: "POST" })
 
     const room = await getRoomByCode(data.code);
     if (!room) throw new Error("Bunday xona topilmadi");
-    if (room.status === "finished") throw new Error("Bu o‘yin tugagan");
+    // A finished game shouldn't be a dead end: reopen it as a fresh lobby.
+    if (room.status === "finished") {
+      await supabaseAdmin
+        .from("rooms")
+        .update({
+          status: "lobby",
+          phase: "lobby",
+          current_round: 0,
+          turn_index: 0,
+          turn_order: [],
+          current_drawer_id: null,
+          phase_ends_at: null,
+          reveal_word: null,
+          word_mask: null,
+          word_length: null,
+        })
+        .eq("id", room.id);
+      await supabaseAdmin.from("players").update({ score: 0 }).eq("room_id", room.id);
+    }
 
     const players = await getPlayers(room.id);
     if (players.filter((p) => p.connected).length >= room.max_players)
