@@ -143,7 +143,7 @@ function RoomPage() {
     void fetchSecret();
     const id = setInterval(() => {
       if (!done) void fetchSecret();
-    }, 1500);
+    }, 500);
     return () => {
       cancelled = true;
       clearInterval(id);
