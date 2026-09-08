@@ -73,14 +73,13 @@ export function DrawCanvas({
     channel
       .on("broadcast", { event: "stroke" }, ({ payload }) => {
         const data = payload as { stroke: LiveStroke; done?: boolean };
-        liveRef.current[data.stroke.id] = data.stroke;
-        dirtyRef.current = true;
         if (data.done) {
-          setTimeout(() => {
-            delete liveRef.current[data.stroke.id];
-            dirtyRef.current = true;
-          }, 900);
+          delete liveRef.current[data.stroke.id];
+          pendingRef.current.push(data.stroke);
+        } else {
+          liveRef.current[data.stroke.id] = data.stroke;
         }
+        dirtyRef.current = true;
       })
       .subscribe();
     channelRef.current = channel;
