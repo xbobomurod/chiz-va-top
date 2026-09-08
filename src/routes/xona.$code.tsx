@@ -135,7 +135,12 @@ function RoomPage() {
         if (cancelled) return;
         setChoices(result.choices);
         setSecretWord(result.word);
-        if (result.choices.length > 0 || result.word) done = true;
+        if (
+          (phase === "choosing" && result.choices.length > 0) ||
+          (phase === "drawing" && !!result.word)
+        ) {
+          done = true;
+        }
       } catch {
         /* retried by the interval below */
       }
@@ -284,7 +289,7 @@ function RoomPage() {
   const canGuess = room.phase === "drawing" && !isDrawer && !me?.has_guessed;
 
   return (
-    <Shell>
+    <Shell game>
       <GameTopBar
         room={room}
         drawer={drawer}
@@ -293,8 +298,8 @@ function RoomPage() {
         onLeave={handleLeave}
       />
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-12">
-        <aside className="order-2 lg:order-1 lg:col-span-3">
+      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 lg:mt-4 lg:grid lg:grid-cols-12 lg:gap-4">
+        <aside className="order-2 hidden lg:order-1 lg:col-span-3 lg:block">
           <div className="lg:hidden">
             <button
               onClick={() => setShowPlayers((v) => !v)}
@@ -311,8 +316,8 @@ function RoomPage() {
           </div>
         </aside>
 
-        <div className="order-1 lg:order-2 lg:col-span-6">
-          <div className="panel p-3">
+        <div className="order-1 min-h-0 flex-1 lg:order-2 lg:col-span-6">
+          <div className="panel flex h-full min-h-0 flex-col p-2 lg:block lg:p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2">
               <span className="inline-flex items-center gap-2 rounded-lg bg-coral/15 px-3 py-1 text-xs font-semibold text-coral outline-1 outline-coral/30">
                 <span className="size-1.5 rounded-full bg-coral" />
@@ -323,7 +328,7 @@ function RoomPage() {
               </span>
             </div>
 
-            <div className="relative">
+            <div className="relative min-h-0">
               <DrawCanvas
                 roomId={room.id}
                 turnKey={turnKey}
@@ -398,8 +403,8 @@ function RoomPage() {
           </div>
         </div>
 
-        <aside className="order-3 lg:col-span-3">
-          <div className="h-[420px] lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
+        <aside className="order-3 h-[30dvh] min-h-0 shrink-0 lg:col-span-3 lg:h-auto">
+          <div className="h-full lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
             <ChatPanel
               messages={messages}
               disabled={isDrawer}
@@ -419,12 +424,16 @@ function RoomPage() {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, game = false }: { children: React.ReactNode; game?: boolean }) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-boarddeep">
+    <main className={`relative overflow-hidden bg-boarddeep ${game ? "h-dvh" : "min-h-screen"}`}>
       <div className="glow-teal pointer-events-none absolute -top-20 right-10 h-72 w-72 rounded-full blur-3xl" />
       <div className="glow-coral pointer-events-none absolute bottom-0 -left-16 h-72 w-72 rounded-full blur-3xl" />
-      <div className="relative mx-auto max-w-7xl px-4 py-6">{children}</div>
+      <div
+        className={`relative mx-auto max-w-7xl px-4 ${game ? "flex h-full min-h-0 flex-col py-3 lg:py-6" : "py-6"}`}
+      >
+        {children}
+      </div>
     </main>
   );
 }
