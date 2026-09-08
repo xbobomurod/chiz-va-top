@@ -122,6 +122,7 @@ function RoomPage() {
   const currentRound = room?.current_round;
   const turnIndex = room?.turn_index;
   useEffect(() => {
+    console.log('CHOICEEFFECT', String(!!token), String(isDrawer), String(phase));
     if (!token || !isDrawer || (phase !== "choosing" && phase !== "drawing")) {
       setChoices([]);
       setSecretWord(null);
