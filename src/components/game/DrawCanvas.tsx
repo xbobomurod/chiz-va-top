@@ -143,6 +143,9 @@ export function DrawCanvas({
       if (!ctx) return;
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, w, h);
+      /* opaque base so the fill tool has a real colour to spread over */
+      ctx.fillStyle = "#f6efe0";
+      ctx.fillRect(0, 0, w, h);
       for (const stroke of strokesRef.current) drawStroke(ctx, stroke, w, h);
       for (const stroke of pendingRef.current) drawStroke(ctx, stroke, w, h);
       for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);

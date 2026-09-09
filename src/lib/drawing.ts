@@ -86,6 +86,8 @@ function floodFill(
   const tg = data[start + 1]!;
   const tb = data[start + 2]!;
   const ta = data[start + 3]!;
+  /** anti-aliased stroke edges must stop the fill, so compare with tolerance */
+  const tol = 40;
 
   const tmp = document.createElement("canvas");
   tmp.width = tmp.height = 1;
@@ -97,7 +99,10 @@ function floodFill(
   if (tr === fr && tg === fg && tb === fb && ta === 255) return;
 
   const matches = (i: number) =>
-    data[i] === tr && data[i + 1] === tg && data[i + 2] === tb && data[i + 3] === ta;
+    Math.abs(data[i]! - tr) <= tol &&
+    Math.abs(data[i + 1]! - tg) <= tol &&
+    Math.abs(data[i + 2]! - tb) <= tol &&
+    Math.abs(data[i + 3]! - ta) <= tol;
 
   const stack: number[] = [x, y];
   while (stack.length) {
