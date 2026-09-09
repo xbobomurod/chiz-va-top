@@ -13,13 +13,13 @@ interface Props {
 
 export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, onClear }: Props) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-inkdeep/40 p-3 outline-1 outline-white/10">
-      <div className="flex items-center gap-1.5">
+    <div className="mt-2 flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl bg-inkdeep/40 p-2 outline-1 outline-white/10 lg:mt-3 lg:flex-wrap lg:gap-3 lg:overflow-visible lg:p-3">
+      <div className="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           aria-label="Qalam"
           onClick={() => onTool("pen")}
-          className={`grid size-9 place-items-center rounded-lg text-sm font-bold ${
+          className={`grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold lg:size-9 ${
             tool === "pen" ? "bg-cream text-inkdeep" : "bg-white/5 text-cream outline-1 outline-white/10"
           }`}
         >
@@ -29,7 +29,7 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
           type="button"
           aria-label="O‘chirg‘ich"
           onClick={() => onTool("eraser")}
-          className={`grid size-9 place-items-center rounded-lg text-sm font-bold ${
+          className={`grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold lg:size-9 ${
             tool === "eraser" ? "bg-cream text-inkdeep" : "bg-white/5 text-cream outline-1 outline-white/10"
           }`}
         >
@@ -38,7 +38,7 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
         <button
           type="button"
           onClick={onUndo}
-          className="grid size-9 place-items-center rounded-lg bg-white/5 text-cream outline-1 outline-white/10"
+          className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/5 text-cream outline-1 outline-white/10 lg:size-9"
           aria-label="Orqaga"
         >
           ↺
@@ -46,15 +46,17 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
         <button
           type="button"
           onClick={onClear}
-          className="grid h-9 place-items-center rounded-lg bg-white/5 px-3 text-xs text-cream outline-1 outline-white/10"
+          aria-label="Tozalash"
+          className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/5 text-cream outline-1 outline-white/10 lg:h-9 lg:w-auto lg:px-3 lg:text-xs"
         >
-          Tozalash
+          <span className="lg:hidden">🗑</span>
+          <span className="hidden lg:inline">Tozalash</span>
         </button>
       </div>
 
-      <span className="hidden h-6 w-px bg-white/10 sm:block" />
+      <span className="hidden h-6 w-px shrink-0 bg-white/10 lg:block" />
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="grid shrink-0 grid-flow-col grid-rows-2 gap-1.5 lg:flex lg:flex-wrap lg:grid-rows-1">
         {PALETTE.map((value) => (
           <button
             key={value}
@@ -65,25 +67,27 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
               onTool("pen");
             }}
             style={{ backgroundColor: value }}
-            className={`size-6 rounded-full ${
+            className={`size-6 shrink-0 rounded-full ${
               color === value && tool === "pen" ? "outline-2 outline-offset-2 outline-cream/60" : ""
             }`}
           />
         ))}
       </div>
 
-      <span className="hidden h-6 w-px bg-white/10 sm:block" />
+      <span className="hidden h-6 w-px shrink-0 bg-white/10 lg:block" />
 
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-cream/45">O‘lcham</span>
-        <div className="flex items-center gap-1.5 rounded-lg bg-white/5 p-1 outline-1 outline-white/10">
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="hidden text-[11px] uppercase tracking-wider text-cream/45 lg:inline">
+          O‘lcham
+        </span>
+        <div className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white/5 p-1 outline-1 outline-white/10">
           {BRUSH_SIZES.map((value) => (
             <button
               key={value}
               type="button"
               aria-label={`O‘lcham ${value}`}
               onClick={() => onSize(value)}
-              className={`grid size-7 place-items-center rounded-md ${size === value ? "bg-cream" : ""}`}
+              className={`grid size-7 shrink-0 place-items-center rounded-md ${size === value ? "bg-cream" : ""}`}
             >
               <span
                 className={`rounded-full ${size === value ? "bg-inkdeep" : "bg-cream/70"}`}

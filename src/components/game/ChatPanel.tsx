@@ -8,6 +8,14 @@ interface Props {
   onSend: (text: string) => void;
 }
 
+const TONES = ["bg-coral", "bg-gold", "bg-teal", "bg-sky", "bg-cream"];
+
+function toneFor(name: string) {
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.codePointAt(0)!) % 9973;
+  return TONES[hash % TONES.length];
+}
+
 export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -32,7 +40,10 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
       <h3 className="text-xs font-semibold uppercase tracking-wider text-cream/50">
         Topish suhbati
       </h3>
-      <div ref={listRef} className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 lg:mt-3">
+      <div
+        ref={listRef}
+        className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 lg:mt-3"
+      >
         {messages.map((message) => {
           if (message.kind === "system" || message.kind === "close") {
             return (
@@ -51,14 +62,21 @@ export function ChatPanel({ messages, disabled, placeholder, onSend }: Props) {
               </div>
             );
           }
+          const name = message.nickname ?? "?";
           return (
-            <div key={message.id} className="popin rounded-xl rounded-tl-sm bg-white/5 p-2.5">
-              <p className="text-[11px] font-semibold text-gold">{message.nickname}</p>
-              <p className="text-sm break-words text-cream/80">{message.content}</p>
+            <div key={message.id} className="popin flex items-start gap-2">
+              <span
+                className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg font-display text-xs font-extrabold text-inkdeep ${toneFor(name)}`}
+              >
+                {name.slice(0, 1).toLocaleUpperCase("uz")}
+              </span>
+              <div className="min-w-0 flex-1 rounded-xl rounded-tl-sm bg-white/5 p-2.5">
+                <p className="truncate text-[11px] font-semibold text-gold">{name}</p>
+                <p className="text-sm break-words text-cream/80">{message.content}</p>
+              </div>
             </div>
           );
         })}
-        
       </div>
       <form
         onSubmit={submit}
