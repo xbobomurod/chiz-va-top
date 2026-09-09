@@ -441,10 +441,10 @@ function RoomPage() {
           <div className="h-full lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
             <ChatPanel
               messages={messages}
-              disabled={isDrawer}
+              disabled={false}
               placeholder={
                 isDrawer
-                  ? "Chizuvchi yoza olmaydi"
+                  ? "Xabar yozing (so‘zni aytmang!)…"
                   : canGuess
                     ? "Javobingizni yozing…"
                     : "Xabar yozing…"
