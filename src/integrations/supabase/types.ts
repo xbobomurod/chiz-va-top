@@ -84,11 +84,13 @@ export type Database = {
       }
       players: {
         Row: {
+          avatar: Json
           connected: boolean
           created_at: string
           has_guessed: boolean
           id: string
           is_host: boolean
+          kicked: boolean
           last_seen: string
           nickname: string
           room_id: string
@@ -96,11 +98,13 @@ export type Database = {
           score: number
         }
         Insert: {
+          avatar?: Json
           connected?: boolean
           created_at?: string
           has_guessed?: boolean
           id?: string
           is_host?: boolean
+          kicked?: boolean
           last_seen?: string
           nickname: string
           room_id: string
@@ -108,11 +112,13 @@ export type Database = {
           score?: number
         }
         Update: {
+          avatar?: Json
           connected?: boolean
           created_at?: string
           has_guessed?: boolean
           id?: string
           is_host?: boolean
+          kicked?: boolean
           last_seen?: string
           nickname?: string
           room_id?: string
@@ -125,6 +131,55 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          reporter_id: string
+          room_id: string
+          target_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          reporter_id: string
+          room_id: string
+          target_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          reporter_id?: string
+          room_id?: string
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "players"
             referencedColumns: ["id"]
           },
         ]
@@ -264,6 +319,52 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      votekicks: {
+        Row: {
+          created_at: string
+          id: string
+          room_id: string
+          target_id: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          room_id: string
+          target_id: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          room_id?: string
+          target_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votekicks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votekicks_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votekicks_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "players"
             referencedColumns: ["id"]
           },
         ]
