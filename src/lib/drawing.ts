@@ -45,8 +45,17 @@ export function drawStroke(
   }
 
   if (stroke.tool === "fill") {
+    const ratio = width > 0 ? ctx.canvas.width / width : 1;
     const [px, py] = stroke.points[0]!;
-    floodFill(ctx, Math.round(px * width), Math.round(py * height), stroke.color, width, height);
+    floodFill(
+      ctx,
+      Math.round(px * ctx.canvas.width),
+      Math.round(py * ctx.canvas.height),
+      stroke.color,
+      Math.round(ctx.canvas.width),
+      Math.round(ctx.canvas.height),
+    );
+    void ratio;
     ctx.restore();
     return;
   }
