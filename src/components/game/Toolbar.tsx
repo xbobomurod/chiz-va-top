@@ -75,11 +75,11 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
             aria-label={`Rang ${value}`}
             onClick={() => {
               onColor(value);
-              onTool("pen");
+              if (tool === "eraser") onTool("pen");
             }}
             style={{ backgroundColor: value }}
             className={`size-6 shrink-0 rounded-full ${
-              color === value && tool === "pen" ? "outline-2 outline-offset-2 outline-cream/60" : ""
+              color === value && tool !== "eraser" ? "outline-2 outline-offset-2 outline-cream/60" : ""
             }`}
           />
         ))}
