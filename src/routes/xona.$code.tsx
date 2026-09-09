@@ -354,7 +354,10 @@ function RoomPage() {
                             <button
                               key={word}
                               data-choice="1"
+                              disabled={pickedWord !== null}
                               onClick={async () => {
+                                if (pickedWord) return;
+                                setPickedWord(word);
                                 try {
                                   await chooseFn({ data: { token, word } });
                                   setSecretWord(word);
