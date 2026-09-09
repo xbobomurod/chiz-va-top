@@ -83,6 +83,7 @@ function RoomPage() {
   const [size, setSize] = useState(10);
   const [tool, setTool] = useState<Tool>("pen");
   const [showPlayers, setShowPlayers] = useState(false);
+  const [pickedWord, setPickedWord] = useState<string | null>(null);
 
   /* heartbeat + server tick */
   useEffect(() => {
