@@ -434,6 +434,19 @@ export async function handleGuess(
   const isDrawer = room.current_drawer_id === player.id;
 
   if (room.phase !== "drawing" || isDrawer || player.has_guessed) {
+    // The drawer may chat, but must not spell out the hidden word.
+    if (isDrawer && room.phase === "drawing") {
+      const { data: hidden } = await db()
+        .from("room_secrets")
+        .select("word")
+        .eq("room_id", room.id)
+        .maybeSingle();
+      const word = (hidden as { word: string | null } | null)?.word ?? null;
+      if (word && guessMatches(trimmed, word)) {
+        await say(room.id, `${player.nickname} so‘zni aytmoqchi bo‘ldi 🤫`, "close");
+        return { correct: false, close: false };
+      }
+    }
     await say(room.id, trimmed, "guess", player);
     return { correct: false, close: false };
   }
