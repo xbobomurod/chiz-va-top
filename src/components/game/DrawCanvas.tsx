@@ -56,7 +56,7 @@ export function DrawCanvas({
       const w = el.clientWidth;
       const mobile = window.matchMedia("(max-width: 1023px)").matches;
       const maxH = mobile
-        ? Math.max(190, Math.round(window.innerHeight * 0.34))
+        ? Math.max(170, Math.round(window.innerHeight * 0.3))
         : Math.max(300, Math.round(window.innerHeight * 0.62));
       const next = { w, h: Math.min(Math.round((w * 3) / 4), maxH) };
       setDims((previous) =>
