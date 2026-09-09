@@ -37,6 +37,17 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
         </button>
         <button
           type="button"
+          aria-label="Bo‘yash"
+          title="Bo‘yash — yopiq maydonni ranglaydi"
+          onClick={() => onTool("fill")}
+          className={`grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold lg:size-9 ${
+            tool === "fill" ? "bg-cream text-inkdeep" : "bg-white/5 text-cream outline-1 outline-white/10"
+          }`}
+        >
+          🪣
+        </button>
+        <button
+          type="button"
           onClick={onUndo}
           className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/5 text-cream outline-1 outline-white/10 lg:size-9"
           aria-label="Orqaga"
