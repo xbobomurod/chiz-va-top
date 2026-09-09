@@ -45,7 +45,6 @@ export function drawStroke(
   }
 
   if (stroke.tool === "fill") {
-    const ratio = width > 0 ? ctx.canvas.width / width : 1;
     const [px, py] = stroke.points[0]!;
     floodFill(
       ctx,
@@ -55,7 +54,6 @@ export function drawStroke(
       Math.round(ctx.canvas.width),
       Math.round(ctx.canvas.height),
     );
-    void ratio;
     ctx.restore();
     return;
   }
