@@ -44,6 +44,13 @@ export function drawStroke(
     ctx.strokeStyle = stroke.color;
   }
 
+  if (stroke.tool === "fill") {
+    const [px, py] = stroke.points[0]!;
+    floodFill(ctx, Math.round(px * width), Math.round(py * height), stroke.color, width, height);
+    ctx.restore();
+    return;
+  }
+
   ctx.beginPath();
   const [first, ...rest] = stroke.points;
   ctx.moveTo(first![0] * width, first![1] * height);
