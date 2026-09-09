@@ -303,21 +303,42 @@ function RoomPage() {
       />
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 lg:mt-4 lg:grid lg:grid-cols-12 lg:gap-4">
-        <aside className="order-2 hidden lg:order-1 lg:col-span-3 lg:block">
-          <div className="lg:hidden">
-            <button
-              onClick={() => setShowPlayers((v) => !v)}
-              className="mb-2 w-full rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold outline-1 outline-white/10"
-            >
-              {showPlayers ? "O‘yinchilarni yashirish" : `O‘yinchilar (${players.length})`}
-            </button>
-            {showPlayers ? (
+        <div className="order-0 shrink-0 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setShowPlayers((v) => !v)}
+            className="flex w-full items-center gap-2 overflow-x-auto rounded-xl bg-white/5 p-2 outline-1 outline-white/10"
+          >
+            {[...players]
+              .sort((a, b) => b.score - a.score)
+              .map((player) => (
+                <span
+                  key={player.id}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs ${
+                    player.id === room.current_drawer_id
+                      ? "bg-coral/20 outline-1 outline-coral/40"
+                      : player.has_guessed
+                        ? "bg-teal/15"
+                        : "bg-white/5"
+                  } ${player.connected ? "" : "opacity-45"}`}
+                >
+                  <span className="grid size-5 place-items-center rounded bg-gold font-display text-[10px] font-extrabold text-inkdeep">
+                    {player.nickname.slice(0, 1).toLocaleUpperCase("uz")}
+                  </span>
+                  <span className="max-w-20 truncate font-semibold">{player.nickname}</span>
+                  <span className="font-display font-bold text-cream/70">{player.score}</span>
+                </span>
+              ))}
+          </button>
+          {showPlayers ? (
+            <div className="mt-2">
               <PlayerPanel players={players} drawerId={room.current_drawer_id} meId={meId} compact />
-            ) : null}
-          </div>
-          <div className="hidden lg:block">
-            <PlayerPanel players={players} drawerId={room.current_drawer_id} meId={meId} />
-          </div>
+            </div>
+          ) : null}
+        </div>
+
+        <aside className="order-2 hidden lg:order-1 lg:col-span-3 lg:block">
+          <PlayerPanel players={players} drawerId={room.current_drawer_id} meId={meId} />
         </aside>
 
         <div className="order-1 min-h-0 flex-1 lg:order-2 lg:col-span-6">
