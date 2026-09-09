@@ -115,6 +115,9 @@ function RoomPage() {
   }, []);
 
   const isDrawer = !!room && !!meId && room.current_drawer_id === meId;
+  useEffect(() => {
+    setPickedWord(null);
+  }, [room?.current_round, room?.turn_index, room?.phase]);
   const me = players.find((p) => p.id === meId);
   const drawer = players.find((p) => p.id === room?.current_drawer_id);
 
