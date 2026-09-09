@@ -1,6 +1,6 @@
 /** Shared drawing types + rendering (client-safe). */
 
-export type Tool = "pen" | "eraser";
+export type Tool = "pen" | "eraser" | "fill";
 
 export interface Stroke {
   color: string;
