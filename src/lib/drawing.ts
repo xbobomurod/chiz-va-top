@@ -61,3 +61,60 @@ export function drawStroke(
   ctx.stroke();
   ctx.restore();
 }
+
+/** Classic flood fill: paints the enclosed area around (x, y) with `color`. */
+function floodFill(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  width: number,
+  height: number,
+) {
+  if (x < 0 || y < 0 || x >= width || y >= height) return;
+  const image = ctx.getImageData(0, 0, width, height);
+  const data = image.data;
+  const start = (y * width + x) * 4;
+  const tr = data[start]!;
+  const tg = data[start + 1]!;
+  const tb = data[start + 2]!;
+  const ta = data[start + 3]!;
+
+  const tmp = document.createElement("canvas");
+  tmp.width = tmp.height = 1;
+  const tctx = tmp.getContext("2d")!;
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, 1, 1);
+  const [fr, fg, fb] = tctx.getImageData(0, 0, 1, 1).data;
+
+  if (tr === fr && tg === fg && tb === fb && ta === 255) return;
+
+  const matches = (i: number) =>
+    data[i] === tr && data[i + 1] === tg && data[i + 2] === tb && data[i + 3] === ta;
+
+  const stack: number[] = [x, y];
+  while (stack.length) {
+    const cy = stack.pop()!;
+    const cx = stack.pop()!;
+    let idx = (cy * width + cx) * 4;
+    if (!matches(idx)) continue;
+    let lx = cx;
+    while (lx >= 0 && matches((cy * width + lx) * 4)) lx--;
+    lx++;
+    let rx = cx;
+    while (rx < width && matches((cy * width + rx) * 4)) rx++;
+    rx--;
+    for (let ix = lx; ix <= rx; ix++) {
+      idx = (cy * width + ix) * 4;
+      data[idx] = fr!;
+      data[idx + 1] = fg!;
+      data[idx + 2] = fb!;
+      data[idx + 3] = 255;
+    }
+    for (let ix = lx; ix <= rx; ix++) {
+      if (cy > 0 && matches(((cy - 1) * width + ix) * 4)) stack.push(ix, cy - 1);
+      if (cy < height - 1 && matches(((cy + 1) * width + ix) * 4)) stack.push(ix, cy + 1);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+}
