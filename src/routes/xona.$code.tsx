@@ -362,10 +362,16 @@ function RoomPage() {
                                   await chooseFn({ data: { token, word } });
                                   setSecretWord(word);
                                 } catch {
-                                  /* ignore */
+                                  setPickedWord(null);
                                 }
                               }}
-                              className="rounded-xl bg-gold px-4 py-2 font-display text-base font-bold text-inkdeep"
+                              className={`rounded-xl px-4 py-2 font-display text-base font-bold text-inkdeep transition-transform duration-100 active:scale-95 ${
+                                pickedWord === word
+                                  ? "bg-teal"
+                                  : pickedWord
+                                    ? "bg-gold/40"
+                                    : "bg-gold hover:brightness-110"
+                              }`}
                             >
                               {word}
                             </button>
