@@ -189,6 +189,14 @@ export function DrawCanvas({
       tool,
       points: [pointFrom(e, el)],
     };
+    if (tool === "fill") {
+      const stroke = currentRef.current;
+      currentRef.current = null;
+      broadcast(stroke, true);
+      pendingRef.current.push(stroke);
+      const { id: _id, ...data } = stroke;
+      onStrokeFinished(data);
+    }
     lastSentRef.current = 0;
     dirtyRef.current = true;
     renderRef.current();
