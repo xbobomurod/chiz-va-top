@@ -7,6 +7,15 @@ import { z } from "zod";
 
 const tokenSchema = z.object({ token: z.string().min(10) });
 
+const avatarSchema = z
+  .object({
+    color: z.number().int(),
+    eyes: z.number().int(),
+    mouth: z.number().int(),
+    hat: z.number().int(),
+  })
+  .optional();
+
 const settingsSchema = z.object({
   nickname: z.string().trim().min(1).max(16),
   totalRounds: z.number().int().min(1).max(10),
@@ -14,6 +23,7 @@ const settingsSchema = z.object({
   maxPlayers: z.number().int().min(2).max(10),
   difficulty: z.enum(["easy", "medium", "difficult"]),
   category: z.string().nullable(),
+  avatar: avatarSchema,
 });
 
 function code(): string {
@@ -69,7 +79,12 @@ export const createRoom = createServerFn({ method: "POST" })
 
     const { data: player, error: pErr } = await supabaseAdmin
       .from("players")
-      .insert({ room_id: room.id, nickname: data.nickname, is_host: true })
+      .insert({
+        room_id: room.id,
+        nickname: data.nickname,
+        is_host: true,
+        ...(data.avatar ? { avatar: data.avatar } : {}),
+      })
       .select("*")
       .single();
     if (pErr || !player) throw new Error("O‘yinchi qo‘shilmadi");
@@ -92,6 +107,7 @@ export const joinRoom = createServerFn({ method: "POST" })
       .object({
         nickname: z.string().trim().min(1).max(16),
         code: z.string().trim().min(4).max(8),
+        avatar: avatarSchema,
       })
       .parse(input),
   )
@@ -133,7 +149,11 @@ export const joinRoom = createServerFn({ method: "POST" })
 
     const { data: player, error } = await supabaseAdmin
       .from("players")
-      .insert({ room_id: room.id, nickname: data.nickname })
+      .insert({
+        room_id: room.id,
+        nickname: data.nickname,
+        ...(data.avatar ? { avatar: data.avatar } : {}),
+      })
       .select("*")
       .single();
     if (error || !player) throw new Error("Qo‘shilib bo‘lmadi");
@@ -387,4 +407,130 @@ export const restartGame = createServerFn({ method: "POST" })
       })
       .eq("id", room.id);
     return { ok: true };
+  });
+
+
+/* ---------------- avatar & moderation ---------------- */
+
+export const updateAvatar = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        token: z.string().min(10),
+        avatar: z.object({
+          color: z.number().int(),
+          eyes: z.number().int(),
+          mouth: z.number().int(),
+          hat: z.number().int(),
+        }),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { playerFromToken } = await import("./game.server");
+    const player = await playerFromToken(data.token);
+    if (!player) throw new Error("O‘yinchi topilmadi");
+    await supabaseAdmin.from("players").update({ avatar: data.avatar }).eq("id", player.id);
+    return { ok: true as const };
+  });
+
+const targetSchema = z.object({ token: z.string().min(10), targetId: z.string().uuid() });
+
+async function kickPlayer(roomId: string, targetId: string, nickname: string, reason: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin
+    .from("players")
+    .update({ kicked: true, connected: false })
+    .eq("id", targetId);
+  await supabaseAdmin.from("player_tokens").delete().eq("player_id", targetId);
+  await supabaseAdmin.from("chat_messages").insert({
+    room_id: roomId,
+    content: `${nickname} xonadan chiqarildi (${reason}).`,
+    kind: "system",
+  });
+}
+
+export const voteKick = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => targetSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { playerFromToken, getPlayers } = await import("./game.server");
+
+    const voter = await playerFromToken(data.token);
+    if (!voter) throw new Error("O‘yinchi topilmadi");
+    if (voter.id === data.targetId) throw new Error("O‘zingizni chiqara olmaysiz");
+
+    const players = await getPlayers(voter.room_id);
+    const target = players.find((p) => p.id === data.targetId);
+    if (!target) throw new Error("Bu o‘yinchi topilmadi");
+
+    await supabaseAdmin
+      .from("votekicks")
+      .upsert(
+        { room_id: voter.room_id, target_id: target.id, voter_id: voter.id },
+        { onConflict: "room_id,target_id,voter_id" },
+      );
+
+    const { data: votes } = await supabaseAdmin
+      .from("votekicks")
+      .select("voter_id")
+      .eq("room_id", voter.room_id)
+      .eq("target_id", target.id);
+
+    const activeIds = new Set(players.filter((p) => p.connected).map((p) => p.id));
+    const valid = (votes ?? []).filter((v) => activeIds.has(v.voter_id)).length;
+    const needed = Math.floor(activeIds.size / 2) + 1;
+
+    if (valid >= needed && activeIds.size >= 3) {
+      await kickPlayer(voter.room_id, target.id, target.nickname, "ovoz berish");
+      return { ok: true as const, kicked: true, votes: valid, needed };
+    }
+
+    await supabaseAdmin.from("chat_messages").insert({
+      room_id: voter.room_id,
+      content: `${target.nickname} uchun chiqarish ovozi: ${valid}/${needed}`,
+      kind: "system",
+    });
+    return { ok: true as const, kicked: false, votes: valid, needed };
+  });
+
+export const reportPlayer = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    targetSchema.extend({ reason: z.string().trim().min(1).max(120) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { playerFromToken, getPlayers } = await import("./game.server");
+
+    const reporter = await playerFromToken(data.token);
+    if (!reporter) throw new Error("O‘yinchi topilmadi");
+    if (reporter.id === data.targetId) throw new Error("O‘zingizga shikoyat qila olmaysiz");
+
+    const players = await getPlayers(reporter.room_id);
+    const target = players.find((p) => p.id === data.targetId);
+    if (!target) throw new Error("Bu o‘yinchi topilmadi");
+
+    await supabaseAdmin.from("reports").upsert(
+      {
+        room_id: reporter.room_id,
+        target_id: target.id,
+        reporter_id: reporter.id,
+        reason: data.reason,
+      },
+      { onConflict: "room_id,target_id,reporter_id" },
+    );
+
+    const { data: rows } = await supabaseAdmin
+      .from("reports")
+      .select("reporter_id")
+      .eq("room_id", reporter.room_id)
+      .eq("target_id", target.id);
+
+    const count = new Set((rows ?? []).map((r) => r.reporter_id)).size;
+    if (count >= 3) {
+      await kickPlayer(reporter.room_id, target.id, target.nickname, "shikoyatlar");
+      return { ok: true as const, kicked: true, count };
+    }
+    return { ok: true as const, kicked: false, count };
   });

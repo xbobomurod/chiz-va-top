@@ -30,6 +30,8 @@ export interface PlayerState {
   is_host: boolean;
   connected: boolean;
   has_guessed: boolean;
+  avatar: unknown;
+  kicked: boolean;
 }
 
 export interface ChatMessage {
@@ -59,7 +61,12 @@ export function useRoomState(code: string) {
 
   const refetch = useCallback(async (roomId: string) => {
     const [p, m, s] = await Promise.all([
-      supabase.from("players").select("*").eq("room_id", roomId).order("created_at"),
+      supabase
+        .from("players")
+        .select("*")
+        .eq("room_id", roomId)
+        .eq("kicked", false)
+        .order("created_at"),
       supabase
         .from("chat_messages")
         .select("*")

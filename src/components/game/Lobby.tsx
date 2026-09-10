@@ -1,5 +1,8 @@
 import { useState } from "react";
 import type { PlayerState, RoomState } from "@/hooks/useRoomState";
+import type { AvatarConfig } from "@/lib/avatar";
+import { Avatar } from "./Avatar";
+import { AvatarPicker } from "./AvatarPicker";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
   easy: "Oson",
@@ -15,9 +18,21 @@ interface Props {
   onLeave: () => void;
   starting: boolean;
   error: string | null;
+  avatar: AvatarConfig;
+  onAvatarChange: (next: AvatarConfig) => void;
 }
 
-export function Lobby({ room, players, isHost, onStart, onLeave, starting, error }: Props) {
+export function Lobby({
+  room,
+  players,
+  isHost,
+  onStart,
+  onLeave,
+  starting,
+  error,
+  avatar,
+  onAvatarChange,
+}: Props) {
   const [copied, setCopied] = useState(false);
   const connected = players.filter((p) => p.connected);
 
@@ -72,6 +87,13 @@ export function Lobby({ room, players, isHost, onStart, onLeave, starting, error
             </dd>
           </div>
         </dl>
+
+        <div className="mt-6 rounded-xl bg-white/5 p-4 outline-1 outline-white/10">
+          <p className="pb-3 text-[11px] tracking-wider text-cream/45 uppercase">
+            Avatarni sozlash
+          </p>
+          <AvatarPicker avatar={avatar} onChange={onAvatarChange} size={84} />
+        </div>
       </div>
 
       <div className="panel flex flex-col p-6">
@@ -84,9 +106,7 @@ export function Lobby({ room, players, isHost, onStart, onLeave, starting, error
                 player.connected ? "" : "opacity-45"
               }`}
             >
-              <span className="grid size-8 place-items-center rounded-lg bg-coral font-display text-sm font-extrabold text-inkdeep">
-                {player.nickname.slice(0, 1).toLocaleUpperCase("uz")}
-              </span>
+              <Avatar avatar={player.avatar} size={34} title={player.nickname} />
               <span className="flex-1 truncate text-sm font-semibold">{player.nickname}</span>
               {player.is_host ? (
                 <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[11px] font-semibold text-gold">

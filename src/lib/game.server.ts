@@ -47,6 +47,8 @@ export interface PlayerRow {
   has_guessed: boolean;
   last_seen: string;
   created_at: string;
+  avatar: unknown;
+  kicked: boolean;
 }
 
 const db = () => supabaseAdmin;
@@ -74,6 +76,7 @@ export async function getPlayers(roomId: string): Promise<PlayerRow[]> {
     .from("players")
     .select("*")
     .eq("room_id", roomId)
+    .eq("kicked", false)
     .order("created_at", { ascending: true });
   return (data as PlayerRow[] | null) ?? [];
 }

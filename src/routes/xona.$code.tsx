@@ -19,11 +19,23 @@ import {
   joinRoom,
   leaveRoom,
   pulse,
+  reportPlayer,
   restartGame,
   sendGuess,
   startGame,
   undoStroke,
+  updateAvatar,
+  voteKick,
 } from "@/lib/game.functions";
+import {
+  getMuted,
+  getStoredAvatar,
+  setMuted as persistMuted,
+  storeAvatar,
+  type AvatarConfig,
+} from "@/lib/avatar";
+import { AvatarPicker } from "@/components/game/AvatarPicker";
+import { Avatar } from "@/components/game/Avatar";
 import { clearIdentity, getIdentity, getNickname, setIdentity, setNickname } from "@/lib/identity";
 
 export const Route = createFileRoute("/xona/$code")({
@@ -73,6 +85,9 @@ function RoomPage() {
   const clearFn = useServerFn(clearCanvas);
   const leaveFn = useServerFn(leaveRoom);
   const restartFn = useServerFn(restartGame);
+  const avatarFn = useServerFn(updateAvatar);
+  const kickFn = useServerFn(voteKick);
+  const reportFn = useServerFn(reportPlayer);
 
   const [now, setNow] = useState(() => Date.now());
   const [choices, setChoices] = useState<string[]>([]);
@@ -84,6 +99,69 @@ function RoomPage() {
   const [tool, setTool] = useState<Tool>("pen");
   const [showPlayers, setShowPlayers] = useState(false);
   const [pickedWord, setPickedWord] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<AvatarConfig>(() => getStoredAvatar());
+  const [mutedIds, setMutedIds] = useState<string[]>([]);
+  const [actionNote, setActionNote] = useState<string | null>(null);
+  const [showAvatar, setShowAvatar] = useState(false);
+
+  useEffect(() => {
+    setMutedIds(getMuted(upperCode));
+  }, [upperCode]);
+
+  const note = useCallback((text: string) => {
+    setActionNote(text);
+    setTimeout(() => setActionNote(null), 4000);
+  }, []);
+
+  const changeAvatar = useCallback(
+    (next: AvatarConfig) => {
+      setAvatar(next);
+      storeAvatar(next);
+      if (token) void avatarFn({ data: { token, avatar: next } }).catch(() => undefined);
+    },
+    [token, avatarFn],
+  );
+
+  const toggleMute = useCallback(
+    (playerId: string) => {
+      setMutedIds((prev) => {
+        const next = prev.includes(playerId)
+          ? prev.filter((id) => id !== playerId)
+          : [...prev, playerId];
+        persistMuted(upperCode, next);
+        return next;
+      });
+    },
+    [upperCode],
+  );
+
+  const handleVotekick = useCallback(
+    async (playerId: string) => {
+      if (!token) return;
+      try {
+        const result = await kickFn({ data: { token, targetId: playerId } });
+        note(result.kicked ? "O‘yinchi chiqarildi." : `Ovoz: ${result.votes}/${result.needed}`);
+      } catch (e) {
+        note(e instanceof Error ? e.message : "Ovoz berib bo‘lmadi");
+      }
+    },
+    [token, kickFn, note],
+  );
+
+  const handleReport = useCallback(
+    async (playerId: string) => {
+      if (!token) return;
+      try {
+        const result = await reportFn({
+          data: { token, targetId: playerId, reason: "nomaqbul xatti-harakat" },
+        });
+        note(result.kicked ? "O‘yinchi chiqarildi." : `Shikoyat qabul qilindi (${result.count}/3).`);
+      } catch (e) {
+        note(e instanceof Error ? e.message : "Shikoyat yuborilmadi");
+      }
+    },
+    [token, reportFn, note],
+  );
 
   /* heartbeat + server tick */
   useEffect(() => {
@@ -248,6 +326,8 @@ function RoomPage() {
           isHost={isHost}
           starting={starting}
           error={error}
+          avatar={avatar}
+          onAvatarChange={changeAvatar}
           onLeave={handleLeave}
           onStart={async () => {
             setStarting(true);
@@ -322,9 +402,7 @@ function RoomPage() {
                         : "bg-white/5"
                   } ${player.connected ? "" : "opacity-45"}`}
                 >
-                  <span className="grid size-5 place-items-center rounded bg-gold font-display text-[10px] font-extrabold text-inkdeep">
-                    {player.nickname.slice(0, 1).toLocaleUpperCase("uz")}
-                  </span>
+                  <Avatar avatar={player.avatar} size={20} title={player.nickname} />
                   <span className="max-w-20 truncate font-semibold">{player.nickname}</span>
                   <span className="font-display font-bold text-cream/70">{player.score}</span>
                 </span>
@@ -332,13 +410,44 @@ function RoomPage() {
           </button>
           {showPlayers ? (
             <div className="mt-2">
-              <PlayerPanel players={players} drawerId={room.current_drawer_id} meId={meId} compact />
+              <PlayerPanel
+                players={players}
+                drawerId={room.current_drawer_id}
+                meId={meId}
+                compact
+                mutedIds={mutedIds}
+                onToggleMute={toggleMute}
+                onVotekick={handleVotekick}
+                onReport={handleReport}
+                actionNote={actionNote}
+              />
             </div>
           ) : null}
         </div>
 
         <aside className="order-2 hidden lg:order-1 lg:col-span-3 lg:block">
-          <PlayerPanel players={players} drawerId={room.current_drawer_id} meId={meId} />
+          <PlayerPanel
+            players={players}
+            drawerId={room.current_drawer_id}
+            meId={meId}
+            mutedIds={mutedIds}
+            onToggleMute={toggleMute}
+            onVotekick={handleVotekick}
+            onReport={handleReport}
+            actionNote={actionNote}
+          />
+          <button
+            type="button"
+            onClick={() => setShowAvatar((v) => !v)}
+            className="mt-2 w-full rounded-xl bg-white/5 py-2 text-xs font-semibold text-cream/70 outline-1 outline-white/10"
+          >
+            {showAvatar ? "Avatarni yopish" : "Avatarni o‘zgartirish"}
+          </button>
+          {showAvatar ? (
+            <div className="panel mt-2 p-3">
+              <AvatarPicker avatar={avatar} onChange={changeAvatar} size={72} />
+            </div>
+          ) : null}
         </aside>
 
         <div className="order-1 min-h-0 flex-1 lg:order-2 lg:col-span-6">
@@ -441,6 +550,8 @@ function RoomPage() {
           <div className="h-full lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
             <ChatPanel
               messages={messages}
+              players={players}
+              mutedIds={mutedIds}
               disabled={false}
               placeholder={
                 isDrawer
