@@ -76,6 +76,7 @@ export async function getPlayers(roomId: string): Promise<PlayerRow[]> {
     .from("players")
     .select("*")
     .eq("room_id", roomId)
+    .eq("kicked", false)
     .order("created_at", { ascending: true });
   return (data as PlayerRow[] | null) ?? [];
 }
