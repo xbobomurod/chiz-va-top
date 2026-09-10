@@ -1,4 +1,5 @@
 import type { PlayerState } from "@/hooks/useRoomState";
+import { Avatar } from "./Avatar";
 
 interface Props {
   players: PlayerState[];
@@ -25,6 +26,7 @@ export function Leaderboard({ players, isHost, onRestart, onHome }: Props) {
             className="flex items-center gap-3 rounded-xl bg-white/5 p-3 outline-1 outline-white/10"
           >
             <span className="font-display text-lg font-bold text-cream/50">{index + 1}</span>
+            <Avatar avatar={player.avatar} size={32} title={player.nickname} />
             <span className="flex-1 truncate text-sm font-semibold">{player.nickname}</span>
             <span className="font-display text-lg font-bold text-gold">{player.score}</span>
           </li>
