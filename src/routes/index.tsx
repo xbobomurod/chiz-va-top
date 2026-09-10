@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { createRoom, joinRoom } from "@/lib/game.functions";
 import { getNickname, setIdentity, setNickname } from "@/lib/identity";
+import { getStoredAvatar, storeAvatar, type AvatarConfig } from "@/lib/avatar";
+import { AvatarPicker } from "@/components/game/AvatarPicker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,6 +35,7 @@ function Home() {
   const join = useServerFn(joinRoom);
 
   const [nickname, setNick] = useState(() => getNickname());
+  const [avatar, setAvatar] = useState<AvatarConfig>(() => getStoredAvatar());
   const [mode, setMode] = useState<Mode>("none");
   const [code, setCode] = useState("");
   const [rounds, setRounds] = useState(3);
@@ -55,9 +58,11 @@ function Home() {
           maxPlayers,
           difficulty,
           category: null,
+          avatar,
         },
       });
       setNickname(nickname.trim());
+      storeAvatar(avatar);
       setIdentity(result.code, { token: result.token, playerId: result.playerId });
       void navigate({ to: "/xona/$code", params: { code: result.code } });
     } catch (e) {
@@ -74,9 +79,10 @@ function Home() {
     setError(null);
     try {
       const result = await join({
-        data: { nickname: nickname.trim(), code: code.trim().toUpperCase() },
+        data: { nickname: nickname.trim(), code: code.trim().toUpperCase(), avatar },
       });
       setNickname(nickname.trim());
+      storeAvatar(avatar);
       setIdentity(result.code, { token: result.token, playerId: result.playerId });
       void navigate({ to: "/xona/$code", params: { code: result.code } });
     } catch (e) {
@@ -130,6 +136,20 @@ function Home() {
                 placeholder="Masalan: Bektosh"
                 className="mt-2 w-full rounded-xl bg-inkdeep/60 px-4 py-3 font-display text-lg font-semibold text-cream outline-1 outline-white/10 placeholder:text-cream/30 focus:outline-coral"
               />
+
+              <div className="mt-4 rounded-xl bg-white/5 p-3 outline-1 outline-white/10">
+                <p className="pb-2 text-[11px] font-medium tracking-wider text-cream/50 uppercase">
+                  Avatarni tanlang
+                </p>
+                <AvatarPicker
+                  avatar={avatar}
+                  onChange={(next) => {
+                    setAvatar(next);
+                    storeAvatar(next);
+                  }}
+                  size={88}
+                />
+              </div>
 
               <div className="mt-3 flex flex-col gap-2.5 sm:flex-row">
                 <button
