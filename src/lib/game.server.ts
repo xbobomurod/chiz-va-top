@@ -47,6 +47,8 @@ export interface PlayerRow {
   has_guessed: boolean;
   last_seen: string;
   created_at: string;
+  avatar: unknown;
+  kicked: boolean;
 }
 
 const db = () => supabaseAdmin;
