@@ -277,6 +277,7 @@ export function DrawCanvas({
     }
     broadcast(current, true);
     pendingRef.current.push(current);
+    baseDirtyRef.current = true;
     const { id: _id, ...stroke } = current;
     onStrokeFinished(stroke);
     dirtyRef.current = true;
@@ -284,7 +285,8 @@ export function DrawCanvas({
   }
 
   return (
-    <div ref={wrapRef} className="w-full">
+    <div ref={wrapRef} className="flex h-full min-h-0 w-full items-center justify-center">
+
       <canvas
         ref={canvasRef}
         style={{
