@@ -233,6 +233,8 @@ export function DrawCanvas({
       currentRef.current = null;
       broadcast(stroke, true);
       pendingRef.current.push(stroke);
+      baseDirtyRef.current = true;
+
       const { id: _id, ...data } = stroke;
       onStrokeFinished(data);
     }
