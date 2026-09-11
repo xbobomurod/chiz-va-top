@@ -608,6 +608,7 @@ function JoinCard({
 }) {
   const join = useServerFn(joinRoom);
   const [nickname, setNick] = useState(() => getNickname());
+  const [avatar, setAvatar] = useState<AvatarConfig>(() => getStoredAvatar());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -628,6 +629,17 @@ function JoinCard({
           onChange={(e) => setNick(e.target.value)}
           className="mt-2 w-full rounded-xl bg-inkdeep/60 px-4 py-3 font-display text-lg font-semibold text-cream outline-1 outline-white/10 focus:outline-coral"
         />
+        <div className="mt-4 rounded-xl bg-white/5 p-3 outline-1 outline-white/10">
+          <p className="pb-2 text-[11px] tracking-wider text-cream/50 uppercase">Avatar</p>
+          <AvatarPicker
+            avatar={avatar}
+            onChange={(next) => {
+              setAvatar(next);
+              storeAvatar(next);
+            }}
+            size={80}
+          />
+        </div>
         {error ? <p className="mt-3 text-sm text-coral">{error}</p> : null}
         <button
           disabled={busy}
@@ -636,7 +648,7 @@ function JoinCard({
             setBusy(true);
             setError(null);
             try {
-              const result = await join({ data: { nickname: nickname.trim(), code } });
+              const result = await join({ data: { nickname: nickname.trim(), code, avatar } });
               setNickname(nickname.trim());
               setIdentity(code, { token: result.token, playerId: result.playerId });
               onJoined(result.token, result.playerId);
