@@ -13,7 +13,7 @@ interface Props {
 
 export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, onClear }: Props) {
   return (
-    <div className="mt-2 flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl bg-inkdeep/40 p-2 outline-1 outline-white/10 lg:mt-3 lg:flex-wrap lg:gap-3 lg:overflow-visible lg:p-3">
+    <div className="mt-2 flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-xl bg-inkdeep/40 p-1.5 outline-1 outline-white/10 lg:mt-3 lg:justify-start lg:gap-3 lg:p-3">
       <div className="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
@@ -67,7 +67,7 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
 
       <span className="hidden h-6 w-px shrink-0 bg-white/10 lg:block" />
 
-      <div className="grid shrink-0 grid-flow-col grid-rows-2 gap-1.5 lg:flex lg:flex-wrap lg:grid-rows-1">
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5">
         {PALETTE.map((value) => (
           <button
             key={value}
