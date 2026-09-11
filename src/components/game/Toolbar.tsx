@@ -67,7 +67,7 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
 
       <span className="hidden h-6 w-px shrink-0 bg-white/10 lg:block" />
 
-      <div className="grid shrink-0 grid-flow-col grid-rows-2 gap-1.5 lg:flex lg:flex-wrap lg:grid-rows-1">
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5">
         {PALETTE.map((value) => (
           <button
             key={value}
