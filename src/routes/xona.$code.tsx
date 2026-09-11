@@ -462,7 +462,7 @@ function RoomPage() {
               </span>
             </div>
 
-            <div className="relative min-h-0">
+            <div className="relative flex min-h-0 flex-1 lg:block lg:flex-none">
               <DrawCanvas
                 roomId={room.id}
                 turnKey={turnKey}
