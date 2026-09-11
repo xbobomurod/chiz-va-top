@@ -139,10 +139,13 @@ export function DrawCanvas({
   useEffect(() => {
     const render = () => {
       rafRef.current = null;
-      if (!dirtyRef.current) return;
-      dirtyRef.current = false;
       const canvas = canvasRef.current;
       if (!canvas) return;
+      const full = dirtyRef.current;
+      const tail = tailDirtyRef.current;
+      if (!full && !tail) return;
+      dirtyRef.current = false;
+      tailDirtyRef.current = false;
       const { w, h } = dimsRef.current;
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
       const pw = Math.round(w * ratio);
@@ -150,9 +153,18 @@ export function DrawCanvas({
       if (canvas.width !== pw || canvas.height !== ph) {
         canvas.width = pw;
         canvas.height = ph;
+        baseDirtyRef.current = true;
       }
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+
+      /* fast path: only the in-progress stroke grew — paint its new segments */
+      if (!full && currentRef.current) {
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawStrokeTail(ctx, currentRef.current, drawnUpToRef.current, w, h);
+        drawnUpToRef.current = currentRef.current.points.length;
+        return;
+      }
 
       let base = baseRef.current;
       if (!base) {
@@ -184,7 +196,10 @@ export function DrawCanvas({
       ctx.drawImage(base, 0, 0);
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);
-      if (currentRef.current) drawStroke(ctx, currentRef.current, w, h);
+      if (currentRef.current) {
+        drawStroke(ctx, currentRef.current, w, h);
+        drawnUpToRef.current = currentRef.current.points.length;
+      }
     };
     renderRef.current = () => {
       if (rafRef.current === null) rafRef.current = requestAnimationFrame(render);
@@ -194,6 +209,7 @@ export function DrawCanvas({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, []);
+
 
 
   const pointFrom = useCallback(
