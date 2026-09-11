@@ -91,6 +91,7 @@ export function DrawCanvas({
         if (data.done) {
           delete liveRef.current[data.stroke.id];
           pendingRef.current.push(data.stroke);
+          baseDirtyRef.current = true;
         } else {
           liveRef.current[data.stroke.id] = data.stroke;
         }
@@ -112,6 +113,7 @@ export function DrawCanvas({
     savedCountRef.current = 0;
     currentRef.current = null;
     dirtyRef.current = true;
+    baseDirtyRef.current = true;
     renderRef.current();
   }, [turnKey]);
 
@@ -122,17 +124,18 @@ export function DrawCanvas({
     if (added > 0) pendingRef.current.splice(0, added);
     else if (added < 0) pendingRef.current = [];
     dirtyRef.current = true;
+    baseDirtyRef.current = true;
     renderRef.current();
   }, [strokes]);
 
   useEffect(() => {
     dirtyRef.current = true;
+    baseDirtyRef.current = true;
     renderRef.current();
   }, [dims]);
 
-  /* Draw the complete scene only when shared/saved state changes. During a
-   * pointer move we paint the newest segment immediately, avoiding a cleared
-   * white frame while a phone is busy processing touch events. */
+  /* The saved history is rasterised once into an offscreen bitmap; each frame
+   * only blits that bitmap and repaints the few strokes still in flight. */
   useEffect(() => {
     const render = () => {
       rafRef.current = null;
@@ -142,19 +145,44 @@ export function DrawCanvas({
       if (!canvas) return;
       const { w, h } = dimsRef.current;
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
-      if (canvas.width !== Math.round(w * ratio) || canvas.height !== Math.round(h * ratio)) {
-        canvas.width = Math.round(w * ratio);
-        canvas.height = Math.round(h * ratio);
+      const pw = Math.round(w * ratio);
+      const ph = Math.round(h * ratio);
+      if (canvas.width !== pw || canvas.height !== ph) {
+        canvas.width = pw;
+        canvas.height = ph;
       }
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+
+      let base = baseRef.current;
+      if (!base) {
+        base = document.createElement("canvas");
+        baseRef.current = base;
+        baseDirtyRef.current = true;
+      }
+      if (base.width !== pw || base.height !== ph) {
+        base.width = pw;
+        base.height = ph;
+        baseDirtyRef.current = true;
+      }
+      if (baseDirtyRef.current) {
+        baseDirtyRef.current = false;
+        const bctx = base.getContext("2d");
+        if (bctx) {
+          bctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+          bctx.clearRect(0, 0, w, h);
+          /* opaque base so the fill tool has a real colour to spread over */
+          bctx.fillStyle = "#f6efe0";
+          bctx.fillRect(0, 0, w, h);
+          for (const stroke of strokesRef.current) drawStroke(bctx, stroke, w, h);
+          for (const stroke of pendingRef.current) drawStroke(bctx, stroke, w, h);
+        }
+      }
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, pw, ph);
+      ctx.drawImage(base, 0, 0);
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      /* opaque base so the fill tool has a real colour to spread over */
-      ctx.fillStyle = "#f6efe0";
-      ctx.fillRect(0, 0, w, h);
-      for (const stroke of strokesRef.current) drawStroke(ctx, stroke, w, h);
-      for (const stroke of pendingRef.current) drawStroke(ctx, stroke, w, h);
       for (const stroke of Object.values(liveRef.current)) drawStroke(ctx, stroke, w, h);
       if (currentRef.current) drawStroke(ctx, currentRef.current, w, h);
     };
@@ -166,6 +194,7 @@ export function DrawCanvas({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, []);
+
 
   const pointFrom = useCallback(
     (e: { clientX: number; clientY: number }, el: HTMLElement): [number, number] => {
