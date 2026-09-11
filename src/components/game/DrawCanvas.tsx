@@ -41,6 +41,9 @@ export function DrawCanvas({
   const strokesRef = useRef<Stroke[]>(strokes);
   const dimsRef = useRef({ w: 800, h: 600 });
   const dirtyRef = useRef(true);
+  /** cached bitmap of saved + pending strokes so history isn't redrawn each frame */
+  const baseRef = useRef<HTMLCanvasElement | null>(null);
+  const baseDirtyRef = useRef(true);
   const rafRef = useRef<number | null>(null);
   const renderRef = useRef<() => void>(() => undefined);
   const [dims, setDims] = useState({ w: 800, h: 600 });
@@ -48,21 +51,24 @@ export function DrawCanvas({
   strokesRef.current = strokes;
   dimsRef.current = dims;
 
-  /* size — keep the board fully visible on phones */
+  /* size — fill the space the layout gives us, keep tools visible on phones */
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const measure = () => {
       const w = el.clientWidth;
+      const available = el.clientHeight;
       const mobile = window.matchMedia("(max-width: 1023px)").matches;
-      const maxH = mobile
-        ? Math.max(170, Math.round(window.innerHeight * 0.3))
+      const fallback = mobile
+        ? Math.max(150, Math.round(window.innerHeight * 0.28))
         : Math.max(300, Math.round(window.innerHeight * 0.62));
-      const next = { w, h: Math.min(Math.round((w * 3) / 4), maxH) };
+      const maxH = available > 80 ? available : fallback;
+      const next = { w, h: Math.max(140, Math.min(Math.round((w * 3) / 4), maxH)) };
       setDims((previous) =>
         previous.w === next.w && previous.h === next.h ? previous : next,
       );
       dirtyRef.current = true;
+      baseDirtyRef.current = true;
       renderRef.current();
     };
     measure();
@@ -74,6 +80,7 @@ export function DrawCanvas({
       window.removeEventListener("orientationchange", measure);
     };
   }, []);
+
 
   /* realtime broadcast */
   useEffect(() => {
