@@ -69,6 +69,41 @@ export function drawStroke(
   ctx.restore();
 }
 
+/** Paint only the newest segments of an in-progress stroke (no full repaint). */
+export function drawStrokeTail(
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke,
+  from: number,
+  width: number,
+  height: number,
+) {
+  if (stroke.tool === "fill") return;
+  const start = Math.max(0, from - 1);
+  if (stroke.points.length - start < 2) return;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (stroke.tool === "eraser") {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "rgba(0,0,0,1)";
+    ctx.lineWidth = ((stroke.size * 2.2) / 800) * width;
+  } else {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = (stroke.size / 800) * width;
+  }
+  ctx.beginPath();
+  const first = stroke.points[start]!;
+  ctx.moveTo(first[0] * width, first[1] * height);
+  for (let i = start + 1; i < stroke.points.length; i++) {
+    const point = stroke.points[i]!;
+    ctx.lineTo(point[0] * width, point[1] * height);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+
 /** Classic flood fill: paints the enclosed area around (x, y) with `color`. */
 function floodFill(
   ctx: CanvasRenderingContext2D,
