@@ -216,16 +216,15 @@ export function DrawCanvas({
 
 
 
-  const pointFrom = useCallback(
-    (e: { clientX: number; clientY: number }, el: HTMLElement): [number, number] => {
-      const rect = el.getBoundingClientRect();
-      return [
-        Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-        Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-      ];
-    },
-    [],
-  );
+  const pointFrom = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
+    const rect = rectRef.current ?? canvasRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return [0, 0];
+    return [
+      Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+    ];
+  }, []);
+
 
   const broadcast = useCallback((stroke: LiveStroke, done = false) => {
     void channelRef.current?.send({ type: "broadcast", event: "stroke", payload: { stroke, done } });
