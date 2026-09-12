@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { drawStroke, type Stroke, type Tool } from "@/lib/drawing";
+import { drawStroke, drawStrokeTail, type Stroke, type Tool } from "@/lib/drawing";
 
 interface Props {
   roomId: string;
@@ -41,6 +41,12 @@ export function DrawCanvas({
   const strokesRef = useRef<Stroke[]>(strokes);
   const dimsRef = useRef({ w: 800, h: 600 });
   const dirtyRef = useRef(true);
+  /** only the in-progress stroke changed: repaint just its newest segments */
+  const tailDirtyRef = useRef(false);
+  const drawnUpToRef = useRef(0);
+  const rectRef = useRef<DOMRect | null>(null);
+
+
   /** cached bitmap of saved + pending strokes so history isn't redrawn each frame */
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const baseDirtyRef = useRef(true);
@@ -67,7 +73,9 @@ export function DrawCanvas({
       setDims((previous) =>
         previous.w === next.w && previous.h === next.h ? previous : next,
       );
+      rectRef.current = null;
       dirtyRef.current = true;
+
       baseDirtyRef.current = true;
       renderRef.current();
     };
@@ -212,16 +220,15 @@ export function DrawCanvas({
 
 
 
-  const pointFrom = useCallback(
-    (e: { clientX: number; clientY: number }, el: HTMLElement): [number, number] => {
-      const rect = el.getBoundingClientRect();
-      return [
-        Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-        Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-      ];
-    },
-    [],
-  );
+  const pointFrom = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
+    const rect = rectRef.current ?? canvasRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return [0, 0];
+    return [
+      Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+    ];
+  }, []);
+
 
   const broadcast = useCallback((stroke: LiveStroke, done = false) => {
     void channelRef.current?.send({ type: "broadcast", event: "stroke", payload: { stroke, done } });
@@ -237,13 +244,16 @@ export function DrawCanvas({
     } catch {
       /* some browsers reject capture on synthetic pointers */
     }
+    /* cache the box once per stroke: reading it per move forces layout on phones */
+    rectRef.current = el.getBoundingClientRect();
     currentRef.current = {
       id: Math.random().toString(36).slice(2),
       color,
       size,
       tool,
-      points: [pointFrom(e, el)],
+      points: [pointFrom(e)],
     };
+    drawnUpToRef.current = 0;
     if (tool === "fill") {
       const stroke = currentRef.current;
       currentRef.current = null;
@@ -263,28 +273,41 @@ export function DrawCanvas({
     const current = currentRef.current;
     if (!canDraw || !current) return;
     e.preventDefault();
-    const el = e.currentTarget as HTMLElement;
     const native = e.nativeEvent as PointerEvent;
     const coalesced =
       typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [];
-    if (coalesced.length > 0) {
-      for (const point of coalesced) current.points.push(pointFrom(point, el));
-    } else {
-      current.points.push(pointFrom(e, el));
+    const batch = coalesced.length > 0 ? coalesced : [native];
+    const rect = rectRef.current;
+    /* drop sub-pixel jitter so long strokes stay cheap to redraw */
+    const minStep = rect ? 0.75 / Math.max(1, rect.width) : 0.002;
+    for (const point of batch) {
+      const next = pointFrom(point);
+      const last = current.points[current.points.length - 1];
+      if (last && Math.abs(next[0] - last[0]) < minStep && Math.abs(next[1] - last[1]) < minStep) {
+        continue;
+      }
+      current.points.push(next);
     }
-    if (current.points.length > 4000) current.points.splice(0, current.points.length - 4000);
-    dirtyRef.current = true;
+    if (current.points.length > 4000) {
+      current.points.splice(0, current.points.length - 4000);
+      drawnUpToRef.current = Math.max(0, drawnUpToRef.current - 1);
+      dirtyRef.current = true;
+    }
+    tailDirtyRef.current = true;
     renderRef.current();
     const now = performance.now();
-    if (now - lastSentRef.current > 33) {
+    if (now - lastSentRef.current > 40) {
       lastSentRef.current = now;
       broadcast(current);
     }
   }
 
+
   function onUp(e: React.PointerEvent) {
     const current = currentRef.current;
     currentRef.current = null;
+    rectRef.current = null;
+    drawnUpToRef.current = 0;
     if (!canDraw || !current) return;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -301,13 +324,13 @@ export function DrawCanvas({
   }
 
   return (
-    <div ref={wrapRef} className="flex h-full min-h-0 w-full items-center justify-center">
-
+    <div ref={wrapRef} className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
       <canvas
         ref={canvasRef}
         style={{
           width: "100%",
           height: dims.h,
+          maxHeight: "100%",
           touchAction: "none",
           overscrollBehavior: "contain",
           WebkitUserSelect: "none",
@@ -316,6 +339,7 @@ export function DrawCanvas({
           contain: "strict",
         }}
         className={`w-full rounded-xl bg-cream select-none ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
+
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={onDown}
         onPointerMove={onMove}
