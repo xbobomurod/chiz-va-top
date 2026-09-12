@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { drawStroke, type Stroke, type Tool } from "@/lib/drawing";
+import { drawStroke, drawStrokeTail, type Stroke, type Tool } from "@/lib/drawing";
 
 interface Props {
   roomId: string;
