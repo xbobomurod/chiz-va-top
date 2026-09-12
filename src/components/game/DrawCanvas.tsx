@@ -241,13 +241,16 @@ export function DrawCanvas({
     } catch {
       /* some browsers reject capture on synthetic pointers */
     }
+    /* cache the box once per stroke: reading it per move forces layout on phones */
+    rectRef.current = el.getBoundingClientRect();
     currentRef.current = {
       id: Math.random().toString(36).slice(2),
       color,
       size,
       tool,
-      points: [pointFrom(e, el)],
+      points: [pointFrom(e)],
     };
+    drawnUpToRef.current = 0;
     if (tool === "fill") {
       const stroke = currentRef.current;
       currentRef.current = null;
@@ -267,24 +270,35 @@ export function DrawCanvas({
     const current = currentRef.current;
     if (!canDraw || !current) return;
     e.preventDefault();
-    const el = e.currentTarget as HTMLElement;
     const native = e.nativeEvent as PointerEvent;
     const coalesced =
       typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [];
-    if (coalesced.length > 0) {
-      for (const point of coalesced) current.points.push(pointFrom(point, el));
-    } else {
-      current.points.push(pointFrom(e, el));
+    const batch = coalesced.length > 0 ? coalesced : [native];
+    const rect = rectRef.current;
+    /* drop sub-pixel jitter so long strokes stay cheap to redraw */
+    const minStep = rect ? 0.75 / Math.max(1, rect.width) : 0.002;
+    for (const point of batch) {
+      const next = pointFrom(point);
+      const last = current.points[current.points.length - 1];
+      if (last && Math.abs(next[0] - last[0]) < minStep && Math.abs(next[1] - last[1]) < minStep) {
+        continue;
+      }
+      current.points.push(next);
     }
-    if (current.points.length > 4000) current.points.splice(0, current.points.length - 4000);
-    dirtyRef.current = true;
+    if (current.points.length > 4000) {
+      current.points.splice(0, current.points.length - 4000);
+      drawnUpToRef.current = Math.max(0, drawnUpToRef.current - 1);
+      dirtyRef.current = true;
+    }
+    tailDirtyRef.current = true;
     renderRef.current();
     const now = performance.now();
-    if (now - lastSentRef.current > 33) {
+    if (now - lastSentRef.current > 40) {
       lastSentRef.current = now;
       broadcast(current);
     }
   }
+
 
   function onUp(e: React.PointerEvent) {
     const current = currentRef.current;
