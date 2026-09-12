@@ -44,6 +44,8 @@ export function DrawCanvas({
   /** only the in-progress stroke changed: repaint just its newest segments */
   const tailDirtyRef = useRef(false);
   const drawnUpToRef = useRef(0);
+  const rectRef = useRef<DOMRect | null>(null);
+
 
   /** cached bitmap of saved + pending strokes so history isn't redrawn each frame */
   const baseRef = useRef<HTMLCanvasElement | null>(null);
