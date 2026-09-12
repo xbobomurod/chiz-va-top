@@ -306,6 +306,8 @@ export function DrawCanvas({
   function onUp(e: React.PointerEvent) {
     const current = currentRef.current;
     currentRef.current = null;
+    rectRef.current = null;
+    drawnUpToRef.current = 0;
     if (!canDraw || !current) return;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -322,13 +324,13 @@ export function DrawCanvas({
   }
 
   return (
-    <div ref={wrapRef} className="flex h-full min-h-0 w-full items-center justify-center">
-
+    <div ref={wrapRef} className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
       <canvas
         ref={canvasRef}
         style={{
           width: "100%",
           height: dims.h,
+          maxHeight: "100%",
           touchAction: "none",
           overscrollBehavior: "contain",
           WebkitUserSelect: "none",
@@ -337,6 +339,7 @@ export function DrawCanvas({
           contain: "strict",
         }}
         className={`w-full rounded-xl bg-cream select-none ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
+
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={onDown}
         onPointerMove={onMove}
