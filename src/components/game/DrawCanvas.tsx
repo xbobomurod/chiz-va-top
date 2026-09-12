@@ -73,7 +73,9 @@ export function DrawCanvas({
       setDims((previous) =>
         previous.w === next.w && previous.h === next.h ? previous : next,
       );
+      rectRef.current = null;
       dirtyRef.current = true;
+
       baseDirtyRef.current = true;
       renderRef.current();
     };
