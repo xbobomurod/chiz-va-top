@@ -41,6 +41,10 @@ export function DrawCanvas({
   const strokesRef = useRef<Stroke[]>(strokes);
   const dimsRef = useRef({ w: 800, h: 600 });
   const dirtyRef = useRef(true);
+  /** only the in-progress stroke changed: repaint just its newest segments */
+  const tailDirtyRef = useRef(false);
+  const drawnUpToRef = useRef(0);
+
   /** cached bitmap of saved + pending strokes so history isn't redrawn each frame */
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const baseDirtyRef = useRef(true);
