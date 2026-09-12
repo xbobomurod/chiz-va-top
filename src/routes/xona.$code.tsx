@@ -547,8 +547,9 @@ function RoomPage() {
           </div>
         </div>
 
-        <aside className="order-3 h-[26dvh] min-h-0 shrink-0 lg:col-span-3 lg:h-auto">
-          <div className="h-full lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
+        <aside className="order-3 h-[26dvh] min-h-[132px] shrink-0 overflow-hidden lg:col-span-3 lg:h-auto lg:min-h-0 lg:overflow-visible">
+          <div className="h-full min-h-0 lg:sticky lg:top-6 lg:h-[calc(100vh-6rem)] lg:min-h-[420px]">
+
             <ChatPanel
               messages={messages}
               players={players}
