@@ -450,9 +450,10 @@ function RoomPage() {
           ) : null}
         </aside>
 
-        <div className="order-1 min-h-0 flex-1 lg:order-2 lg:col-span-6">
-          <div className="panel flex h-full min-h-0 flex-col p-2 lg:block lg:p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2">
+        <div className="order-1 min-h-0 flex-1 overflow-hidden lg:order-2 lg:col-span-6 lg:overflow-visible">
+          <div className="panel flex h-full min-h-0 flex-col overflow-hidden p-2 lg:block lg:overflow-visible lg:p-3">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-1 pb-2">
+
               <span className="inline-flex items-center gap-2 rounded-lg bg-coral/15 px-3 py-1 text-xs font-semibold text-coral outline-1 outline-coral/30">
                 <span className="size-1.5 rounded-full bg-coral" />
                 {isDrawer ? "Siz chizyapsiz" : `${drawer?.nickname ?? "—"} chizmoqda`}
